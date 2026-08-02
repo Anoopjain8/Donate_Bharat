@@ -1,0 +1,26 @@
+services:
+  api:
+    build: ./backend
+    container_name: donate-bharat-api
+    env_file: ./backend/.env
+    environment:
+      NODE_ENV: production
+      STORAGE_DRIVER: local
+      LOCAL_UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    container_name: donate-bharat-web
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  uploads:
