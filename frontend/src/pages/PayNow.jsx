@@ -27,11 +27,11 @@ export default function PayNow() {
     orgAPI.get(orgId).then((res) => setOrg(res.data.organization)).catch(() => {});
   }, [orgId]);
 
-  const verify = async (data, paymentId) => {
+  const verify = async (data) => {
     try {
-      const res = await paymentAPI.verify(data);
+      await paymentAPI.verify(data);
       toast.success('Payment successful! Digital receipt generated.');
-      navigate(`/receipts`);
+      navigate('/receipts');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Verification failed');
     }
@@ -50,7 +50,7 @@ export default function PayNow() {
 
       if (res.data.demo) {
         if (window.confirm(`Demo mode: confirm a simulated payment of ₹${amt.toLocaleString('en-IN')} to ${org.name}?`)) {
-          await verify({ paymentId: res.data.paymentId }, 'pay_demo');
+          await verify({ paymentId: res.data.paymentId });
         }
         return;
       }
@@ -70,20 +70,22 @@ export default function PayNow() {
         order_id: res.data.order.id,
         prefill: { name: 'Donor', email: 'donor@example.com' },
         handler: (response) => {
-          verify(
-            {
-              paymentId: res.data.paymentId,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              razorpayOrderId: response.razorpay_order_id,
-            },
-            response.razorpay_payment_id
-          );
+          verify({
+            paymentId: res.data.paymentId,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+            razorpayOrderId: response.razorpay_order_id,
+          });
         },
         modal: { ondismiss: () => setSubmitting(false) },
         theme: { color: '#1a3a5c' },
       };
       const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (response) => {
+        const desc = response?.error?.description || 'Payment was not completed';
+        toast.error(`Payment failed: ${desc}`);
+        setSubmitting(false);
+      });
       rzp.open();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not start payment');

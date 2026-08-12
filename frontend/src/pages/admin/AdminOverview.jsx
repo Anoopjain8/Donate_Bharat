@@ -1,48 +1,51 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { adminAPI } from '../../services/api';
+import { useAdminOverview } from '../../hooks/useQueries';
+import StatCard from '../../components/ui/StatCard';
+import Skeleton from '../../components/ui/Skeleton';
+import PageHeader from '../../components/ui/PageHeader';
+
+const ADMIN_LINKS = [
+  { to: '/admin/organizations', title: 'Verify Organizations', desc: 'Review and verify payee profiles.' },
+  { to: '/admin/users', title: 'Manage Users', desc: 'Activate or deactivate accounts.' },
+  { to: '/admin/audit', title: 'Audit Log', desc: 'Full activity trail for compliance.' },
+];
 
 export default function AdminOverview() {
-  const [stats, setStats] = useState(null);
-
-  useEffect(() => {
-    adminAPI.overview().then((res) => setStats(res.data.overview)).catch(() => {});
-  }, []);
+  const { data: stats, isLoading } = useAdminOverview();
 
   return (
-    <div className="container">
-      <div className="dashboard-header">
-        <h1>Admin Overview</h1>
-        <p>Platform-wide statistics.</p>
-      </div>
+    <div>
+      <PageHeader title="Admin Overview" subtitle="Platform-wide statistics." />
 
-      {!stats ? (
-        <div className="loading">Loading...</div>
+      {isLoading ? (
+        <div className="stats">
+          <Skeleton style={{ height: 96 }} />
+          <Skeleton style={{ height: 96 }} />
+          <Skeleton style={{ height: 96 }} />
+          <Skeleton style={{ height: 96 }} />
+          <Skeleton style={{ height: 96 }} />
+          <Skeleton style={{ height: 96 }} />
+          <Skeleton style={{ height: 96 }} />
+        </div>
       ) : (
         <div className="stats">
-          <div className="stat"><div className="label">Users</div><div className="value">{stats.users}</div></div>
-          <div className="stat"><div className="label">Organizations</div><div className="value">{stats.organizations}</div></div>
-          <div className="stat"><div className="label">Pending Verification</div><div className="value">{stats.pendingOrganizations}</div></div>
-          <div className="stat"><div className="label">Completed Payments</div><div className="value">{stats.completedPayments}</div></div>
-          <div className="stat"><div className="label">Total Processed</div><div className="value">₹{(stats.totalProcessed || 0).toLocaleString('en-IN')}</div></div>
-          <div className="stat"><div className="label">Bills Tracked</div><div className="value">{stats.bills}</div></div>
-          <div className="stat"><div className="label">Last 30 Days</div><div className="value">₹{(stats.last30DaysRevenue || 0).toLocaleString('en-IN')}</div></div>
+          <StatCard label="Users" value={stats?.users} icon="👥" />
+          <StatCard label="Organizations" value={stats?.organizations} icon="🏛️" />
+          <StatCard label="Pending Verification" value={stats?.pendingOrganizations} icon="⏳" />
+          <StatCard label="Completed Payments" value={stats?.completedPayments} icon="✅" />
+          <StatCard label="Total Processed" value={`₹${(stats?.totalProcessed || 0).toLocaleString('en-IN')}`} icon="💰" />
+          <StatCard label="Bills Tracked" value={stats?.bills} icon="🗂️" />
+          <StatCard label="Last 30 Days" value={`₹${(stats?.last30DaysRevenue || 0).toLocaleString('en-IN')}`} icon="📈" />
         </div>
       )}
 
       <div className="grid">
-        <Link to="/admin/organizations" className="card" style={{ color: 'inherit' }}>
-          <h3 style={{ color: 'var(--primary)' }}>Verify Organizations</h3>
-          <p style={{ color: 'var(--muted)', marginTop: 6 }}>Review and verify payee profiles.</p>
-        </Link>
-        <Link to="/admin/users" className="card" style={{ color: 'inherit' }}>
-          <h3 style={{ color: 'var(--primary)' }}>Manage Users</h3>
-          <p style={{ color: 'var(--muted)', marginTop: 6 }}>Activate or deactivate accounts.</p>
-        </Link>
-        <Link to="/admin/audit" className="card" style={{ color: 'inherit' }}>
-          <h3 style={{ color: 'var(--primary)' }}>Audit Log</h3>
-          <p style={{ color: 'var(--muted)', marginTop: 6 }}>Full activity trail for compliance.</p>
-        </Link>
+        {ADMIN_LINKS.map((l) => (
+          <Link key={l.to} to={l.to} className="card quick-link">
+            <h3>{l.title}</h3>
+            <p>{l.desc}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );

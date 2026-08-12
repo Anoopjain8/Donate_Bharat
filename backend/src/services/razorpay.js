@@ -40,12 +40,20 @@ async function createOrder({ amount, receipt, notes }) {
  * Verify the payment signature returned by the Razorpay checkout.
  * Standard HMAC-SHA256 verification using order_id + payment_id.
  */
+function safeEqual(actual, expected) {
+  if (!actual || !expected) return false;
+  const a = Buffer.from(actual);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 function verifySignature({ orderId, paymentId, signature }) {
+  if (!signature) return false;
   const expected = crypto
     .createHmac('sha256', env.razorpay.keySecret)
     .update(`${orderId}|${paymentId}`)
     .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  return safeEqual(expected, signature);
 }
 
 /**
@@ -59,7 +67,7 @@ function verifyWebhook(body, signature) {
     .createHmac('sha256', env.razorpay.webhookSecret)
     .update(raw)
     .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  return safeEqual(expected, signature);
 }
 
 async function fetchPayment(paymentId) {

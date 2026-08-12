@@ -85,6 +85,9 @@ const createOrganization = asyncHandler(async (req, res) => {
   if (req.user.role !== 'payee') {
     throw ApiError.forbidden('Only payee accounts can create an organization profile');
   }
+  if (!req.user.isEmailVerified) {
+    throw ApiError.forbidden('Verify your email address before creating an organization profile');
+  }
   const existing = await Organization.findOne({ owner: req.user._id });
   if (existing) throw ApiError.conflict('You already have an organization profile');
 

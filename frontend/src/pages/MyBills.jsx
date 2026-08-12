@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { billAPI, fileUrl } from '../services/api';
+import { billAPI, fileUrl, fileDownloadUrl } from '../services/api';
 
 const CATEGORY_FILTERS = [
   'Religious Donation', 'Municipal Corporation', 'Vehicle', 'Income Tax',
@@ -123,9 +123,12 @@ export default function MyBills() {
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {b.files.map((f, i) => (
-                        <a key={i} href={fileUrl(f.key)} target="_blank" rel="noreferrer" className="btn-sm btn-sm-outline">
-                          {f.name?.slice(0, 16)}…
-                        </a>
+                        <div key={i} style={{ display: 'flex', gap: 4 }}>
+                          <a href={fileUrl(f.key)} target="_blank" rel="noreferrer" className="btn-sm btn-sm-outline">
+                            {f.name?.slice(0, 16)}…
+                          </a>
+                          <a href={fileDownloadUrl(f.key)} className="btn-sm btn-sm-outline" title="Download original file">Save</a>
+                        </div>
                       ))}
                     </div>
                   </td>

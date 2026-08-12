@@ -46,6 +46,11 @@ const registerPayee = (over = {}) =>
     .post('/api/auth/register')
     .send({ name: 'Org Owner', email: 'org@example.com', password: 'Password123', role: 'payee', ...over });
 
+// Email verification is enforced before a payee can create an organization.
+// Simulate the "user clicked the verification link" step directly.
+const markEmailVerified = (email) =>
+  User.findOneAndUpdate({ email }, { isEmailVerified: true, emailVerificationToken: undefined, emailVerificationExpires: undefined });
+
 describe('Auth', () => {
   test('registers a payer and returns tokens', async () => {
     const res = await register();
@@ -120,8 +125,9 @@ describe('Organizations', () => {
     expect(names).not.toContain('Unverified Temple');
   });
 
-  test('payee can create org profile', async () => {
+  test('payee can create org profile after email verification', async () => {
     const token = (await registerPayee({ email: 'payer@example.com' })).body.accessToken;
+    await markEmailVerified('payer@example.com');
     const res = await request(app)
       .post('/api/organizations')
       .set('Authorization', `Bearer ${token}`)
@@ -132,8 +138,20 @@ describe('Organizations', () => {
     expect(res.body.organization.verified).toBe(false);
   });
 
+  test('blocks unverified payee from creating an org', async () => {
+    const token = (await registerPayee({ email: 'unverified@example.com' })).body.accessToken;
+    const res = await request(app)
+      .post('/api/organizations')
+      .set('Authorization', `Bearer ${token}`)
+      .field('name', 'No Email Ashram')
+      .field('religion', 'Hindu')
+      .field('type', 'Temple');
+    expect(res.status).toBe(403);
+  });
+
   test('rejects invalid org payload', async () => {
     const token = (await registerPayee({ email: 'payer2@example.com' })).body.accessToken;
+    await markEmailVerified('payer2@example.com');
     const res = await request(app)
       .post('/api/organizations')
       .set('Authorization', `Bearer ${token}`)
@@ -172,6 +190,40 @@ describe('Payments', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ organizationId: org._id.toString(), amount: -5 });
     expect(res.status).toBe(422);
+  });
+
+  test('demo payment completes end-to-end (receipt + bill + org total)', async () => {
+    const token = (await register({ email: 'donor4@example.com' })).body.accessToken;
+    const org = await Organization.findOne({ name: 'Verified Temple' });
+    const created = await request(app)
+      .post('/api/payments/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ organizationId: org._id.toString(), amount: 250, purpose: 'Donation' });
+    expect(created.status).toBe(200);
+    expect(created.body.demo).toBe(true);
+    expect(created.body.paymentId).toBeTruthy();
+
+    const verified = await request(app)
+      .post('/api/payments/verify')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ paymentId: created.body.paymentId });
+    expect(verified.status).toBe(200);
+    expect(verified.body.payment.status).toBe('completed');
+    expect(verified.body.billId).toBeTruthy();
+
+    const payment = await Payment.findById(created.body.paymentId);
+    expect(payment.bill).toBeTruthy();
+    expect(payment.receiptPdf).toBeTruthy();
+
+    const freshOrg = await Organization.findById(org._id);
+    expect(freshOrg.totalReceived).toBeGreaterThanOrEqual(250);
+  });
+
+  test('webhook rejects a missing/invalid signature instead of erroring', async () => {
+    const res = await request(app)
+      .post('/api/payments/webhook')
+      .send({ event: 'payment.captured', payload: {} });
+    expect(res.status).toBe(401);
   });
 });
 

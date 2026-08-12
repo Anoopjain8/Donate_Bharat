@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const ApiError = require('../utils/ApiError');
 const env = require('../config/env');
+const logger = require('../utils/logger');
 
 // eslint-disable-next-line no-unused-vars
 const notFoundHandler = (req, _res, next) => {
@@ -8,7 +9,7 @@ const notFoundHandler = (req, _res, next) => {
 };
 
 // eslint-disable-next-line no-unused-vars
-const errorHandler = (err, _req, res, _next) => {
+const errorHandler = (err, req, res, _next) => {
   let error = err;
 
   if (!(error instanceof ApiError)) {
@@ -35,14 +36,16 @@ const errorHandler = (err, _req, res, _next) => {
   }
 
   if (error.statusCode >= 500) {
-    // eslint-disable-next-line no-console
-    console.error(err);
+    logger.error({ reqId: req.id, err }, 'Unhandled error');
+  } else {
+    logger.warn({ reqId: req.id, method: req.method, url: req.originalUrl, status: error.statusCode }, 'Request error');
   }
 
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.message,
     ...(error.details ? { details: error.details } : {}),
+    requestId: req.id,
     ...(error.statusCode === 500 && env.nodeEnv !== 'production'
       ? { stack: error.stack }
       : {}),

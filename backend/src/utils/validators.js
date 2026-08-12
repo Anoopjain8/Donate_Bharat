@@ -38,6 +38,10 @@ const resetPasswordValidator = validate([
     .matches(/[0-9]/).withMessage('Must contain a number'),
 ]);
 
+const verifyEmailValidator = validate([
+  body('token').notEmpty().withMessage('Verification token required'),
+]);
+
 const createOrgValidator = validate([
   body('name').trim().isLength({ min: 2, max: 120 }).withMessage('Name must be 2-120 characters'),
   body('religion').isIn(RELIGIONS).withMessage('Invalid religion'),
@@ -118,6 +122,7 @@ module.exports = {
   changePasswordValidator,
   forgotPasswordValidator,
   resetPasswordValidator,
+  verifyEmailValidator,
   createOrgValidator,
   updateOrgValidator,
   createOrderValidator,

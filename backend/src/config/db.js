@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const env = require('./env');
+const logger = require('../utils/logger');
 
 // Some ISP/routers fail to resolve MongoDB Atlas SRV records (querySrv ECONNREFUSED).
 // Route DNS lookups through public resolvers for reliable Atlas connectivity.
@@ -13,7 +14,7 @@ const connectDB = async () => {
   await mongoose.connect(env.mongoUri, {
     serverSelectionTimeoutMS: 15000,
   });
-  console.log(`MongoDB connected: ${mongoose.connection.host}`);
+  logger.info(`MongoDB connected: ${mongoose.connection.host}`);
   return mongoose.connection;
 };
 

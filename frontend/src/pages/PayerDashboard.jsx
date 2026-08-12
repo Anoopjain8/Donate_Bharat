@@ -1,108 +1,148 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { billAPI, orgAPI } from '../services/api';
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { useBillsSummary, useOrgCount } from '../hooks/useQueries';
+import StatCard from '../components/ui/StatCard';
+import Skeleton from '../components/ui/Skeleton';
+import PageHeader from '../components/ui/PageHeader';
+
+const PALETTE = ['#1a3a5c', '#2b5c8a', '#e8a13c', '#16a34a', '#7c3aed', '#d97706'];
+
+const QUICK_ACTIONS = [
+  { to: '/upload', icon: '📄', title: 'Upload a Bill', desc: 'Upload a PDF or image of any bill or receipt.' },
+  { to: '/receipts', icon: '🗂️', title: 'My Bills & Receipts', desc: 'Browse, filter and download your records.' },
+  { to: '/organizations', icon: '🕉️', title: 'Pay a Payee', desc: 'Pay verified organizations securely online.' },
+  { to: '/reports', icon: '📊', title: 'Reports', desc: 'Export Excel / PDF reports for any period.' },
+];
 
 export default function PayerDashboard() {
   const { user } = useAuth();
-  const [summary, setSummary] = useState({ totals: { count: 0, total: 0 }, byCategory: [], byMonth: [] });
-  const [orgCount, setOrgCount] = useState(0);
+  const { theme } = useTheme();
+  const { data: summary, isLoading } = useBillsSummary();
+  const { data: orgCount, isLoading: countLoading } = useOrgCount();
 
-  useEffect(() => {
-    billAPI.summary().then((res) => setSummary(res.data)).catch(() => {});
-    orgAPI.list({ limit: 1 }).then((res) => setOrgCount(res.data.pagination?.total || 0)).catch(() => {});
-  }, []);
+  const totals = summary?.totals || { count: 0, total: 0 };
+  const byCategory = summary?.byCategory || [];
+  const byMonth = (summary?.byMonth || []).slice(-6);
+
+  const dark = theme === 'dark';
+  const tooltipStyle = {
+    background: dark ? '#1e293b' : '#fff',
+    border: `1px solid ${dark ? '#334155' : '#e5e7eb'}`,
+    borderRadius: 8,
+    fontSize: 13,
+    color: dark ? '#e2e8f0' : '#1f2937',
+  };
+  const axisStroke = dark ? '#94a3b8' : '#6b7280';
+  const gridStroke = dark ? '#334155' : '#e5e7eb';
 
   return (
-    <div className="container">
-      <div className="dashboard-header">
-        <h1>Welcome, {user.name}</h1>
-        <p>Track your bills, payments and receipts in one place.</p>
-      </div>
+    <div>
+      <PageHeader
+        title={`Welcome, ${user.name}`}
+        subtitle="Track your bills, payments and receipts in one place."
+      />
 
       <div className="stats">
-        <div className="stat">
-          <div className="label">Bills Tracked</div>
-          <div className="value">{summary.totals.count}</div>
-        </div>
-        <div className="stat">
-          <div className="label">Total Amount</div>
-          <div className="value">₹{(summary.totals.total || 0).toLocaleString('en-IN')}</div>
-        </div>
-        <div className="stat">
-          <div className="label">Verified Payees</div>
-          <div className="value">{orgCount}</div>
-        </div>
+        {isLoading || countLoading ? (
+          <>
+            <Skeleton style={{ height: 96 }} />
+            <Skeleton style={{ height: 96 }} />
+            <Skeleton style={{ height: 96 }} />
+          </>
+        ) : (
+          <>
+            <StatCard label="Bills Tracked" value={totals.count} icon="🗂️" />
+            <StatCard label="Total Amount" value={`₹${(totals.total || 0).toLocaleString('en-IN')}`} icon="💰" />
+            <StatCard label="Verified Payees" value={orgCount || 0} icon="🏛️" />
+          </>
+        )}
       </div>
 
       <div className="grid" style={{ marginBottom: 28 }}>
-        <Link to="/upload" className="card" style={{ color: 'inherit', transition: 'box-shadow .15s' }}>
-          <div style={{ fontSize: '2rem' }}>📄</div>
-          <h3 style={{ color: 'var(--primary)', margin: '8px 0' }}>Upload a Bill</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Upload a PDF or image of any bill or receipt.</p>
-        </Link>
-        <Link to="/receipts" className="card" style={{ color: 'inherit' }}>
-          <div style={{ fontSize: '2rem' }}>🗂️</div>
-          <h3 style={{ color: 'var(--primary)', margin: '8px 0' }}>My Bills & Receipts</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Browse, filter and download your records.</p>
-        </Link>
-        <Link to="/organizations" className="card" style={{ color: 'inherit' }}>
-          <div style={{ fontSize: '2rem' }}>🕉️</div>
-          <h3 style={{ color: 'var(--primary)', margin: '8px 0' }}>Pay a Payee</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Pay verified organizations securely online.</p>
-        </Link>
-        <Link to="/reports" className="card" style={{ color: 'inherit' }}>
-          <div style={{ fontSize: '2rem' }}>📊</div>
-          <h3 style={{ color: 'var(--primary)', margin: '8px 0' }}>Reports</h3>
-          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>Export Excel / PDF reports for any period.</p>
-        </Link>
+        {QUICK_ACTIONS.map((a) => (
+          <Link key={a.to} to={a.to} className="card quick-link">
+            <div className="quick-link-icon">{a.icon}</div>
+            <h3>{a.title}</h3>
+            <p>{a.desc}</p>
+          </Link>
+        ))}
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-        <div className="card">
-          <h3 style={{ color: 'var(--primary)', marginBottom: 12 }}>By Category</h3>
-          {summary.byCategory.length === 0 ? (
-            <p style={{ color: 'var(--muted)' }}>No data yet.</p>
+      <div className="grid charts-grid">
+        <div className="card chart-card">
+          <h3 className="card-title">By Category</h3>
+          {isLoading ? (
+            <Skeleton style={{ height: 260 }} />
+          ) : byCategory.length === 0 ? (
+            <div className="chart-empty">No data yet.</div>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.byCategory.slice(0, 6).map((c) => (
-                  <tr key={c._id}>
-                    <td>{c._id}</td>
-                    <td style={{ textAlign: 'right' }}>₹{(c.total || 0).toLocaleString('en-IN')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="chart-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={byCategory.map((c) => ({ name: c._id, value: c.total }))}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius={55}
+                    outerRadius={92}
+                    paddingAngle={2}
+                  >
+                    {byCategory.map((c, i) => (
+                      <Cell key={c._id} fill={PALETTE[i % PALETTE.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, 'Amount']}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
-        <div className="card">
-          <h3 style={{ color: 'var(--primary)', marginBottom: 12 }}>Monthly Trend</h3>
-          {summary.byMonth.length === 0 ? (
-            <p style={{ color: 'var(--muted)' }}>No data yet.</p>
+
+        <div className="card chart-card">
+          <h3 className="card-title">Monthly Trend</h3>
+          {isLoading ? (
+            <Skeleton style={{ height: 260 }} />
+          ) : byMonth.length === 0 ? (
+            <div className="chart-empty">No data yet.</div>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Month</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.byMonth.slice(-6).reverse().map((m) => (
-                  <tr key={m._id}>
-                    <td>{m._id}</td>
-                    <td style={{ textAlign: 'right' }}>₹{(m.total || 0).toLocaleString('en-IN')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="chart-wrap">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byMonth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                  <XAxis dataKey="_id" stroke={axisStroke} fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis
+                    stroke={axisStroke}
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                    width={44}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    cursor={{ fill: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }}
+                    formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, 'Amount']}
+                  />
+                  <Bar dataKey="total" fill="#2b5c8a" radius={[6, 6, 0, 0]} maxBarSize={44} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { getErrorMessage } from '../services/api';
 
 export default function Register() {
   const { register } = useAuth();
@@ -39,7 +40,7 @@ export default function Register() {
       if (user.role === 'payee') navigate('/payee/profile');
       else navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.details?.[0]?.message || 'Registration failed');
+      setError(getErrorMessage(err, 'Registration failed'));
     } finally {
       setSubmitting(false);
     }

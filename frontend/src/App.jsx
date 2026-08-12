@@ -1,142 +1,74 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import ProtectedRoute from './components/ProtectedRoute';
-import Landing from './pages/Landing';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import BrowseOrganizations from './pages/BrowseOrganizations';
-import OrganizationDetail from './pages/OrganizationDetail';
-import Transparency from './pages/Transparency';
-import SharedReport from './pages/SharedReport';
-import PayerDashboard from './pages/PayerDashboard';
-import UploadBill from './pages/UploadBill';
-import MyBills from './pages/MyBills';
-import PayNow from './pages/PayNow';
-import Reports from './pages/Reports';
-import PayeeDashboard from './pages/PayeeDashboard';
-import PayeeBills from './pages/PayeeBills';
-import PayeeProfile from './pages/PayeeProfile';
-import AdminOverview from './pages/admin/AdminOverview';
-import AdminOrganizations from './pages/admin/AdminOrganizations';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminAudit from './pages/admin/AdminAudit';
+import PublicLayout from './components/layout/PublicLayout';
+import ProtectedLayout from './components/layout/ProtectedLayout';
+import PageLoader from './components/ui/PageLoader';
+
+const Landing = lazy(() => import('./pages/Landing'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
+const BrowseOrganizations = lazy(() => import('./pages/BrowseOrganizations'));
+const OrganizationDetail = lazy(() => import('./pages/OrganizationDetail'));
+const Transparency = lazy(() => import('./pages/Transparency'));
+const SharedReport = lazy(() => import('./pages/SharedReport'));
+
+const PayerDashboard = lazy(() => import('./pages/PayerDashboard'));
+const UploadBill = lazy(() => import('./pages/UploadBill'));
+const MyBills = lazy(() => import('./pages/MyBills'));
+const PayNow = lazy(() => import('./pages/PayNow'));
+const Reports = lazy(() => import('./pages/Reports'));
+
+const PayeeDashboard = lazy(() => import('./pages/PayeeDashboard'));
+const PayeeBills = lazy(() => import('./pages/PayeeBills'));
+const PayeeProfile = lazy(() => import('./pages/PayeeProfile'));
+
+const AdminOverview = lazy(() => import('./pages/admin/AdminOverview'));
+const AdminOrganizations = lazy(() => import('./pages/admin/AdminOrganizations'));
+const AdminUsers = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminAudit = lazy(() => import('./pages/admin/AdminAudit'));
 
 export default function App() {
   return (
-    <>
-      <Navbar />
+    <Suspense fallback={<PageLoader />}>
       <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/organizations" element={<BrowseOrganizations />} />
-        <Route path="/organizations/:id" element={<OrganizationDetail />} />
-        <Route path="/transparency" element={<Transparency />} />
-        <Route path="/shared/:token" element={<SharedReport />} />
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/organizations" element={<BrowseOrganizations />} />
+          <Route path="/organizations/:id" element={<OrganizationDetail />} />
+          <Route path="/transparency" element={<Transparency />} />
+          <Route path="/shared/:token" element={<SharedReport />} />
+        </Route>
 
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute roles={['payer']}>
-              <PayerDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/upload"
-          element={
-            <ProtectedRoute roles={['payer']}>
-              <UploadBill />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/receipts"
-          element={
-            <ProtectedRoute roles={['payer']}>
-              <MyBills />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/donate/:orgId"
-          element={
-            <ProtectedRoute roles={['payer']}>
-              <PayNow />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/reports"
-          element={
-            <ProtectedRoute roles={['payer', 'payee']}>
-              <Reports />
-            </ProtectedRoute>
-          }
-        />
+        <Route element={<ProtectedLayout roles={['payer']} />}>
+          <Route path="/dashboard" element={<PayerDashboard />} />
+          <Route path="/upload" element={<UploadBill />} />
+          <Route path="/receipts" element={<MyBills />} />
+          <Route path="/donate/:orgId" element={<PayNow />} />
+          <Route path="/reports" element={<Reports />} />
+        </Route>
 
-        <Route
-          path="/payee/dashboard"
-          element={
-            <ProtectedRoute roles={['payee']}>
-              <PayeeDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/payee/bills"
-          element={
-            <ProtectedRoute roles={['payee']}>
-              <PayeeBills />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/payee/profile"
-          element={
-            <ProtectedRoute roles={['payee']}>
-              <PayeeProfile />
-            </ProtectedRoute>
-          }
-        />
+        <Route element={<ProtectedLayout roles={['payee']} />}>
+          <Route path="/payee/dashboard" element={<PayeeDashboard />} />
+          <Route path="/payee/bills" element={<PayeeBills />} />
+          <Route path="/payee/profile" element={<PayeeProfile />} />
+          <Route path="/reports" element={<Reports />} />
+        </Route>
 
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <AdminOverview />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/organizations"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <AdminOrganizations />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/users"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <AdminUsers />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/audit"
-          element={
-            <ProtectedRoute roles={['admin']}>
-              <AdminAudit />
-            </ProtectedRoute>
-          }
-        />
+        <Route element={<ProtectedLayout roles={['admin']} />}>
+          <Route path="/admin" element={<AdminOverview />} />
+          <Route path="/admin/organizations" element={<AdminOrganizations />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/audit" element={<AdminAudit />} />
+        </Route>
       </Routes>
-    </>
+    </Suspense>
   );
 }

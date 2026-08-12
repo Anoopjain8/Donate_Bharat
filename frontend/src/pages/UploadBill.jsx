@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { billAPI, orgAPI } from '../services/api';
+import { billAPI, orgAPI, getErrorMessage } from '../services/api';
 import { useEffect } from 'react';
 
 export default function UploadBill() {
@@ -58,7 +58,7 @@ export default function UploadBill() {
       toast.success('Bill uploaded successfully');
       navigate(`/receipts`);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.details?.[0]?.message || 'Upload failed');
+      toast.error(getErrorMessage(err, 'Upload failed'));
     } finally {
       setSubmitting(false);
     }

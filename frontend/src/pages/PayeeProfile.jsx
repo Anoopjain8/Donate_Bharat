@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { orgAPI } from '../services/api';
+import { orgAPI, authAPI, getErrorMessage } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const RELIGIONS = ['Hindu', 'Muslim', 'Christian', 'Sikh', 'Buddhist', 'Jain', 'Other'];
@@ -72,7 +72,7 @@ export default function PayeeProfile() {
       if (!existing && user.role === 'payee') updateUser({ role: 'payee' });
       toast.success(existing ? 'Profile updated' : 'Profile created — pending verification');
     } catch (err) {
-      toast.error(err.response?.data?.message || err.response?.data?.details?.[0]?.message || 'Save failed');
+      toast.error(getErrorMessage(err, 'Save failed'));
     } finally {
       setSubmitting(false);
     }
@@ -82,6 +82,30 @@ export default function PayeeProfile() {
 
   return (
     <div className="container">
+      {!user.isEmailVerified && (
+        <div className="form-card" style={{ marginBottom: 16 }}>
+          <h3>Verify your email address</h3>
+          <p className="subtitle">
+            You must verify your email before creating an organization profile. Check your inbox
+            for the link we sent, or resend it below.
+          </p>
+          <button
+            type="button"
+            className="btn btn-sm btn-outline"
+            onClick={async () => {
+              try {
+                await authAPI.resendVerification();
+                toast.success('Verification email sent. Check your inbox.');
+              } catch (err) {
+                toast.error(getErrorMessage(err, 'Could not send verification email'));
+              }
+            }}
+          >
+            Resend verification email
+          </button>
+        </div>
+      )}
+
       <div className="dashboard-header">
         <h1>{existing ? 'Organization Profile' : 'Create Organization Profile'}</h1>
         <p>

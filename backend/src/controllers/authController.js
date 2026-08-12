@@ -4,8 +4,9 @@ const RefreshToken = require('../models/RefreshToken');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../utils/token');
-const { sendEmail } = require('../services/email');
+const { sendEmail, isConfigured: smtpConfigured } = require('../services/email');
 const { logAudit } = require('../utils/audit');
+const logger = require('../utils/logger');
 const env = require('../config/env');
 
 const REFRESH_COOKIE = 'refresh_token';
@@ -61,16 +62,31 @@ const register = asyncHandler(async (req, res) => {
   const exists = await User.findOne({ email });
   if (exists) throw ApiError.conflict('An account with this email already exists');
 
+  const verificationToken = crypto.randomBytes(32).toString('hex');
   const user = await User.create({
     name,
     email,
     password,
     phone: phone || undefined,
     role: role === 'payee' ? 'payee' : 'payer',
+    emailVerificationToken: crypto.createHash('sha256').update(verificationToken).digest('hex'),
+    emailVerificationExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
   });
 
   const { accessToken, user: safeUser } = await issueTokens(user, res, req);
   logAudit({ actor: user._id, action: 'auth.register', resource: 'User', resourceId: user._id, req });
+
+  // Best-effort verification email; never blocks registration.
+  const verifyLink = `${env.clientOrigin[0]}/verify-email?token=${verificationToken}`;
+  sendEmail({
+    to: user.email,
+    subject: 'Verify your Donate Bharat email',
+    text: `Welcome ${user.name}! Verify your email to unlock organization features: ${verifyLink} (valid 24 hours).`,
+    html: `<p>Hi ${user.name},</p><p>Verify your email address:</p><p><a href="${verifyLink}">${verifyLink}</a></p><p>Link expires in 24 hours.</p>`,
+  }).catch(() => {});
+  if (!smtpConfigured() && env.nodeEnv !== 'production') {
+    logger.info({ to: user.email, verifyLink }, 'SMTP not configured — dev verification link');
+  }
 
   res.status(201).json({ success: true, accessToken, user: safeUser });
 });
@@ -83,6 +99,8 @@ const login = asyncHandler(async (req, res) => {
 
   const user = await User.findOne({ email }).select('+password');
   if (!user || !(await user.comparePassword(password))) {
+    // Audit failed attempts for account-takeover / brute-force monitoring.
+    logAudit({ actor: user?._id, action: 'auth.login.failed', resource: 'User', resourceId: user?._id, req, meta: { email } });
     throw ApiError.unauthorized('Invalid email or password');
   }
   if (!user.isActive) throw ApiError.forbidden('Your account has been disabled');
@@ -246,6 +264,55 @@ const resetPassword = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Password reset successfully. Please sign in.' });
 });
 
+/**
+ * POST /api/auth/verify-email — confirms the email address from a token link.
+ */
+const verifyEmail = asyncHandler(async (req, res) => {
+  const { token } = req.body;
+  const hashed = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await User.findOne({
+    emailVerificationToken: hashed,
+    emailVerificationExpires: { $gt: new Date() },
+  });
+  if (!user) throw ApiError.badRequest('Verification link is invalid or has expired');
+
+  user.isEmailVerified = true;
+  user.emailVerificationToken = undefined;
+  user.emailVerificationExpires = undefined;
+  await user.save();
+
+  logAudit({ actor: user._id, action: 'auth.email.verify', resource: 'User', resourceId: user._id, req });
+  res.json({ success: true, message: 'Email verified successfully. You can now create an organization.' });
+});
+
+/**
+ * POST /api/auth/resend-verification — resend the verification email.
+ */
+const resendVerification = asyncHandler(async (req, res) => {
+  if (req.user.isEmailVerified) {
+    return res.json({ success: true, message: 'Your email is already verified.' });
+  }
+
+  const token = crypto.randomBytes(32).toString('hex');
+  req.user.emailVerificationToken = crypto.createHash('sha256').update(token).digest('hex');
+  req.user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await req.user.save();
+
+  const verifyLink = `${env.clientOrigin[0]}/verify-email?token=${token}`;
+  sendEmail({
+    to: req.user.email,
+    subject: 'Verify your Donate Bharat email',
+    text: `Verify your email address: ${verifyLink} (valid 24 hours).`,
+    html: `<p>Verify your email address:</p><p><a href="${verifyLink}">${verifyLink}</a></p><p>Link expires in 24 hours.</p>`,
+  }).catch(() => {});
+  if (!smtpConfigured() && env.nodeEnv !== 'production') {
+    logger.info({ to: req.user.email, verifyLink }, 'SMTP not configured — dev verification link');
+  }
+
+  res.json({ success: true, message: 'Verification email sent.' });
+});
+
 module.exports = {
   register,
   login,
@@ -255,4 +322,6 @@ module.exports = {
   changePassword,
   forgotPassword,
   resetPassword,
+  verifyEmail,
+  resendVerification,
 };

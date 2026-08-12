@@ -41,6 +41,7 @@ const billSchema = new mongoose.Schema(
       index: true,
     },
     subType: { type: String, default: '' },
+    type: { type: String, default: '', maxlength: 60 },
     department: { type: String, default: '' },
     religion: { type: String, enum: ['', 'Hindu', 'Muslim', 'Christian', 'Sikh', 'Buddhist', 'Jain', 'Other'], default: '' },
     amount: { type: Number, required: true, min: 0 },

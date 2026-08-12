@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const fs = require('fs/promises');
+const { createReadStream } = require('fs');
 const path = require('path');
 const {
   S3Client,
@@ -174,7 +175,7 @@ async function getStream(key) {
     return acc;
   }, {});
   const mime = mimeByExt[path.extname(file).slice(1).toLowerCase()] || 'application/octet-stream';
-  return { stream: fs.createReadStream(file), mime };
+  return { stream: createReadStream(file), mime };
 }
 
 module.exports = {

@@ -1,11 +1,14 @@
 const nodemailer = require('nodemailer');
 const env = require('../config/env');
+const logger = require('../utils/logger');
 
 let transporter = null;
 
+const isConfigured = () => Boolean(env.smtp.host && env.smtp.user);
+
 function getTransporter() {
   if (transporter) return transporter;
-  const configured = Boolean(env.smtp.host && env.smtp.user);
+  const configured = isConfigured();
   transporter = configured
     ? nodemailer.createTransport({
         host: env.smtp.host,
@@ -30,10 +33,9 @@ async function sendEmail({ to, subject, text, html }) {
     html,
   });
   if (env.nodeEnv !== 'production') {
-    // eslint-disable-next-line no-console
-    console.log(`[mail] ${subject} -> ${to} (${info.messageId})`);
+    logger.info({ to, subject }, 'mail sent');
   }
   return info;
 }
 
-module.exports = { sendEmail };
+module.exports = { sendEmail, isConfigured };

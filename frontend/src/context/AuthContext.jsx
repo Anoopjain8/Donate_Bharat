@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authAPI, setAuthToken } from '../services/api';
+import { authAPI, setAuthToken, refreshAccessToken } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -22,8 +22,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (localStorage.getItem('token')) {
+      // Restore the session via the httpOnly refresh cookie (no token in localStorage).
+      try {
+        const res = await authAPI.me();
+        if (mounted) persistUser(res.data.user);
+      } catch {
         try {
+          await refreshAccessToken();
           const res = await authAPI.me();
           if (mounted) persistUser(res.data.user);
         } catch {

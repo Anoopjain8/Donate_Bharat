@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import IndiaLogo from './IndiaLogo';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -35,7 +36,7 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="nav-inner">
         <Link to="/" className="nav-brand">
-          <span className="nav-logo">🕉️</span> Donate Bharat
+          <span className="nav-logo"><IndiaLogo /></span> Donate Bharat
         </Link>
         <div className="nav-links">
           {!user && (
@@ -54,12 +55,12 @@ export default function Navbar() {
               <span className="nav-user">
                 {user.name} <small>({user.role})</small>
               </span>
-              <button className="btn-sm btn-sm-outline" onClick={handleLogout}>Logout</button>
+              <button className="btn-sm btn-sm-primary" onClick={handleLogout}>Logout</button>
             </>
           ) : (
             <>
               <Link to="/login" className="btn-sm btn-sm-primary">Login</Link>
-              <Link to="/register" className="btn-sm btn-sm-outline">Register</Link>
+              <Link to="/register" className="btn-sm btn-sm-primary">Register</Link>
             </>
           )}
         </div>

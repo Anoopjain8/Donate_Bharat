@@ -1,5 +1,5 @@
 const PDFDocument = require('pdfkit');
-const { Readable } = require('stream');
+const { PassThrough } = require('stream');
 
 function streamToBuffer(stream) {
   return new Promise((resolve, reject) => {
@@ -12,7 +12,7 @@ function streamToBuffer(stream) {
 
 function buildReceiptPdf({ receipt, payer, organization, files, downloadUrl }) {
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
-  const stream = new Readable({ read() {} });
+  const stream = new PassThrough();
   doc.pipe(stream);
 
   const now = new Date();

@@ -1,11 +1,13 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   withCredentials: true,
 });
 
-let accessToken = localStorage.getItem('token') || '';
+// Access token is kept in memory only (never localStorage) to limit XSS
+// exposure. Sessions are restored via the httpOnly refresh cookie.
+let accessToken = null;
 
 API.interceptors.request.use((config) => {
   if (accessToken) {
@@ -19,10 +21,9 @@ let refreshPromise = null;
 async function refreshAccessToken() {
   if (!refreshPromise) {
     refreshPromise = axios
-      .post('/api/auth/refresh', {}, { withCredentials: true })
+      .post(`${API.defaults.baseURL}/auth/refresh`, {}, { withCredentials: true })
       .then((res) => {
         accessToken = res.data.accessToken;
-        localStorage.setItem('token', accessToken);
         return accessToken;
       })
       .finally(() => {
@@ -36,14 +37,13 @@ API.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry && original.url !== '/api/auth/login' && original.url !== '/api/auth/refresh') {
+    if (error.response?.status === 401 && !original._retry && original.url !== '/api/auth/login' && original.url !== '/auth/login' && !String(original.url).endsWith('/auth/refresh')) {
       original._retry = true;
       try {
         await refreshAccessToken();
         return API(original);
       } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        accessToken = null;
         window.location.href = '/login';
       }
     }
@@ -53,8 +53,14 @@ API.interceptors.response.use(
 
 export function setAuthToken(token) {
   accessToken = token;
-  if (token) localStorage.setItem('token', token);
-  else localStorage.removeItem('token');
+}
+
+export function getErrorMessage(err, fallback = 'Something went wrong') {
+  const details = err?.response?.data?.details;
+  if (Array.isArray(details) && details.length) {
+    return details.map((d) => d.message).join('; ');
+  }
+  return err?.response?.data?.message || fallback;
 }
 
 export const authAPI = {
@@ -65,7 +71,11 @@ export const authAPI = {
   changePassword: (data) => API.put('/auth/password', data),
   forgotPassword: (email) => API.post('/auth/forgot-password', { email }),
   resetPassword: (data) => API.post('/auth/reset-password', data),
+  verifyEmail: (token) => API.post('/auth/verify-email', { token }),
+  resendVerification: () => API.post('/auth/resend-verification'),
 };
+
+export { refreshAccessToken };
 
 export const orgAPI = {
   list: (params) => API.get('/organizations', { params }),
@@ -118,6 +128,11 @@ export function fileUrl(key) {
   if (!key) return '';
   if (key.startsWith('http')) return key;
   return `/api/files/${encodeURIComponent(key)}`;
+}
+
+export function fileDownloadUrl(key) {
+  const url = fileUrl(key);
+  return url ? `${url}?disposition=attachment` : '';
 }
 
 export default API;

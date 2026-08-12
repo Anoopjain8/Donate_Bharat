@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { billAPI, fileUrl } from '../services/api';
+import { billAPI, fileUrl, fileDownloadUrl } from '../services/api';
 
 export default function PayeeBills() {
   const [bills, setBills] = useState([]);
@@ -87,9 +87,12 @@ export default function PayeeBills() {
                     <td>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {b.files.map((f, i) => (
-                          <a key={i} href={fileUrl(f.key)} target="_blank" rel="noreferrer" className="btn-sm btn-sm-outline">
-                            {f.name?.slice(0, 12)}…
-                          </a>
+                          <div key={i} style={{ display: 'flex', gap: 4 }}>
+                            <a href={fileUrl(f.key)} target="_blank" rel="noreferrer" className="btn-sm btn-sm-outline">
+                              {f.name?.slice(0, 12)}…
+                            </a>
+                            <a href={fileDownloadUrl(f.key)} className="btn-sm btn-sm-outline" title="Download original file">Save</a>
+                          </div>
                         ))}
                       </div>
                     </td>

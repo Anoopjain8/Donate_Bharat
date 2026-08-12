@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const env = require('./env');
+const logger = require('../utils/logger');
 
 /**
  * Creates the admin account on first boot if none exists.
@@ -15,7 +16,7 @@ async function bootstrapAdmin() {
     role: 'admin',
     isEmailVerified: true,
   });
-  console.log(`Admin account ensured: ${env.admin.email}`);
+  logger.info(`Admin account ensured: ${env.admin.email}`);
 }
 
 module.exports = { bootstrapAdmin };

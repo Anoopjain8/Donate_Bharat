@@ -98,8 +98,27 @@ function randomDate(start, end) {
 }
 
 async function seed() {
+  if (env.nodeEnv === 'production') {
+    console.error('Refusing to run seed against a production environment.');
+    console.error('Set NODE_ENV=development to seed, or run with SEED_FORCE=true to override.');
+    if (!process.env.SEED_FORCE) {
+      process.exit(1);
+    }
+    console.warn('SEED_FORCE=true — proceeding to wipe the target database.');
+  }
+
   const conn = await mongoose.connect(env.mongoUri, { serverSelectionTimeoutMS: 15000 });
   console.log(`Connected: ${conn.connection.host}/${conn.connection.name}`);
+
+  if (!process.env.SEED_FORCE) {
+    const existing = await User.estimatedDocumentCount();
+    if (existing > 0) {
+      console.error(`Target database "${conn.connection.name}" already has ${existing} users.`);
+      console.error('Refusing to wipe non-empty database. Use SEED_FORCE=true to override.');
+      await mongoose.disconnect();
+      process.exit(1);
+    }
+  }
 
   console.log('Wiping existing data...');
   await Promise.all([
